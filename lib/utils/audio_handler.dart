@@ -14,6 +14,45 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     playing: false,
   );
 
+  MyAudioHandler() {
+    audioPlayer.onPlayerStateChanged.listen((PlayerState event) {
+      if (event == PlayerState.stopped || event == PlayerState.paused) {
+        _playbackState = _playbackState.copyWith(
+          playing: false,
+          controls: [
+            MediaControl.skipToPrevious,
+            MediaControl.play,
+            MediaControl.skipToNext,
+          ],
+        );
+        playbackState.add(_playbackState);
+      } else if (event == PlayerState.playing) {
+        _playbackState = _playbackState.copyWith(
+          playing: true,
+          controls: [
+            MediaControl.skipToPrevious,
+            MediaControl.pause,
+            MediaControl.skipToNext,
+          ],
+          queueIndex: currentIndex,
+        );
+        playbackState.add(_playbackState);
+      }
+    });
+    audioPlayer.onDurationChanged.listen((event) {
+      musicList[currentIndex] =
+          musicList[currentIndex].copyWith(duration: event);
+      mediaItem.add(musicList[currentIndex]);
+    });
+    audioPlayer.onPositionChanged.listen((event) {
+      _playbackState = _playbackState.copyWith(updatePosition: event);
+      playbackState.add(_playbackState);
+    });
+    audioPlayer.onPlayerComplete.listen((event) async {
+      skipToNext();
+    });
+  }
+
   Future<void> initFirstSong() async {
     await audioPlayer.setSourceDeviceFile(musicList[currentIndex].id);
     audioPlayer.onDurationChanged.listen((event) {
@@ -28,43 +67,12 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     // All 'play' requests from all origins route to here. Implement this
     // callback to start playing audio appropriate to your app. e.g. music.
     await audioPlayer.play(DeviceFileSource(musicList[currentIndex].id));
-    audioPlayer.onDurationChanged.listen((event) {
-      musicList[currentIndex] =
-          musicList[currentIndex].copyWith(duration: event);
-      mediaItem.add(musicList[currentIndex]);
-    });
-    audioPlayer.onPositionChanged.listen((event) {
-      _playbackState = _playbackState.copyWith(updatePosition: event);
-      playbackState.add(_playbackState);
-    });
-    audioPlayer.onPlayerComplete.listen((event) async {
-      skipToNext();
-    });
-    _playbackState = _playbackState.copyWith(
-      playing: true,
-      controls: [
-        MediaControl.skipToPrevious,
-        MediaControl.pause,
-        MediaControl.skipToNext,
-      ],
-      queueIndex: currentIndex,
-    );
-    playbackState.add(_playbackState);
   }
 
   @override
   Future<void> pause() async {
     print('pause in MyAudioHandler called');
     audioPlayer.pause();
-    _playbackState = _playbackState.copyWith(
-      playing: false,
-      controls: [
-        MediaControl.skipToPrevious,
-        MediaControl.play,
-        MediaControl.skipToNext,
-      ],
-    );
-    playbackState.add(_playbackState);
   }
 
   @override
@@ -107,7 +115,6 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     currentIndex += 1;
     if (currentIndex >= musicList.length) {
       currentIndex = 0;
-      return;
     }
     _playbackState = _playbackState.copyWith(queueIndex: currentIndex);
     playbackState.add(_playbackState);
