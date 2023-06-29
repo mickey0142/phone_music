@@ -24,11 +24,16 @@ class MusicController extends GetxController {
       Permission.storage.request();
     }
 
+    if (!(await Permission.audio.isGranted)) {
+      Permission.audio.request();
+    }
+
     await getMusicFolder('0');
     await getMusicFolder('1');
     for (int i = 0; i < musicFolderPath.length; i++) {
       await getMusicFile(musicFolderPath[i]);
     }
+    updateMusicListInHandler();
   }
 
   Future<void> getMusicFolder(String storageType) async {
@@ -84,12 +89,6 @@ class MusicController extends GetxController {
   void setAudioHandler(AudioHandler handler) {
     print('setAudioHandler called musicList length is ${musicList().length}');
     _audioHandler = handler;
-    for (int i = 0; i < musicList().length; i++) {
-      _audioHandler?.addQueueItem(MediaItem(
-        id: musicList()[i].path,
-        title: musicList()[i].name,
-      ));
-    }
 
     _audioHandler?.playbackState.listen((event) {
       isPlaying(event.playing);
@@ -106,6 +105,15 @@ class MusicController extends GetxController {
             100);
       }
     });
+  }
+
+  void updateMusicListInHandler() {
+    for (int i = 0; i < musicList().length; i++) {
+      _audioHandler?.addQueueItem(MediaItem(
+        id: musicList()[i].path,
+        title: musicList()[i].name,
+      ));
+    }
   }
 
   void playButtonPressed() {

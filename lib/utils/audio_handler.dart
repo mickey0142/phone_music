@@ -15,7 +15,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   );
 
   Future<void> initFirstSong() async {
-    await audioPlayer.setUrl(musicList[currentIndex].id, isLocal: true);
+    await audioPlayer.setSourceDeviceFile(musicList[currentIndex].id);
     audioPlayer.onDurationChanged.listen((event) {
       musicList[currentIndex] =
           musicList[currentIndex].copyWith(duration: event);
@@ -27,16 +27,18 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> play() async {
     // All 'play' requests from all origins route to here. Implement this
     // callback to start playing audio appropriate to your app. e.g. music.
-    print('play in MyAudioHandler called');
-    await audioPlayer.play(musicList[currentIndex].id, isLocal: true);
+    await audioPlayer.play(DeviceFileSource(musicList[currentIndex].id));
     audioPlayer.onDurationChanged.listen((event) {
       musicList[currentIndex] =
           musicList[currentIndex].copyWith(duration: event);
       mediaItem.add(musicList[currentIndex]);
     });
-    audioPlayer.onAudioPositionChanged.listen((event) {
+    audioPlayer.onPositionChanged.listen((event) {
       _playbackState = _playbackState.copyWith(updatePosition: event);
       playbackState.add(_playbackState);
+    });
+    audioPlayer.onPlayerComplete.listen((event) async {
+      skipToNext();
     });
     _playbackState = _playbackState.copyWith(
       playing: true,
@@ -105,6 +107,7 @@ class MyAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     currentIndex += 1;
     if (currentIndex >= musicList.length) {
       currentIndex = 0;
+      return;
     }
     _playbackState = _playbackState.copyWith(queueIndex: currentIndex);
     playbackState.add(_playbackState);
